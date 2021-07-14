@@ -1,6 +1,6 @@
 syntax = "proto3";  // syntax, required
 
-option go_package = "pb/";  // go_package, required
+option go_package = "./pb"; // go_package, required
 
 package techschool.proto; // package name
 

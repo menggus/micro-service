@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+//option go_package = "github.com/menggus/micro-service/pb;pb";  ?????????
+
+package techschool.proto;
+
+import "proto/laptop_message.proto";
+
+
+service LaptopService {
+    rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse) {};
+}
+
+message CreateLaptopRequest {
+    Laptop laptop = 1;
+}
+
+message CreateLaptopResponse {
+    string id = 1;
+}
+
+
+

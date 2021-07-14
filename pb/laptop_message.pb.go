@@ -31,20 +31,21 @@ type Laptop struct {
 	Name  string  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Cpu   *CPU    `protobuf:"bytes,4,opt,name=cpu,proto3" json:"cpu,omitempty"`
 	Ram   *Memory `protobuf:"bytes,5,opt,name=ram,proto3" json:"ram,omitempty"`
-	// Multiple gpu's on one computer
+	// Multiple gpus on one computer
 	Gpus     []*GPU     `protobuf:"bytes,6,rep,name=gpus,proto3" json:"gpus,omitempty"`
 	Storages []*Storage `protobuf:"bytes,7,rep,name=storages,proto3" json:"storages,omitempty"`
 	Screen   *Screen    `protobuf:"bytes,8,opt,name=screen,proto3" json:"screen,omitempty"`
 	Keyboard *Keyboard  `protobuf:"bytes,9,opt,name=keyboard,proto3" json:"keyboard,omitempty"`
-	// weight
+	// group type
 	//
 	// Types that are assignable to Weight:
 	//	*Laptop_WeightKg
 	//	*Laptop_WeightLb
-	Weight      isLaptop_Weight        `protobuf_oneof:"weight"`
-	PriceUsd    float64                `protobuf:"fixed64,12,opt,name=price_usd,json=priceUsd,proto3" json:"price_usd,omitempty"`
-	ReleaseYear uint32                 `protobuf:"varint,13,opt,name=release_year,json=releaseYear,proto3" json:"release_year,omitempty"`
-	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Weight      isLaptop_Weight `protobuf_oneof:"weight"`
+	PriceUsd    float64         `protobuf:"fixed64,12,opt,name=price_usd,json=priceUsd,proto3" json:"price_usd,omitempty"`
+	ReleaseYear uint32          `protobuf:"varint,13,opt,name=release_year,json=releaseYear,proto3" json:"release_year,omitempty"`
+	// google type used
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 }
 
 func (x *Laptop) Reset() {
@@ -251,8 +252,8 @@ var file_proto_laptop_message_proto_rawDesc = []byte{
 	0x64, 0x5f, 0x61, 0x74, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f,
 	0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d,
 	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41,
-	0x74, 0x42, 0x08, 0x0a, 0x06, 0x77, 0x65, 0x69, 0x67, 0x68, 0x74, 0x42, 0x05, 0x5a, 0x03, 0x70,
-	0x62, 0x2f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x42, 0x08, 0x0a, 0x06, 0x77, 0x65, 0x69, 0x67, 0x68, 0x74, 0x42, 0x06, 0x5a, 0x04, 0x2e,
+	0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
