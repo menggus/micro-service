@@ -7,6 +7,8 @@ import "proto/screen_message.proto";
 import "proto/storage_message.proto";
 import "google/protobuf/timestamp.proto";
 
+// "Red Error",Goland => File | Settings | Languages & Frameworks | Protobuf | add path "/usr/local/protoc/include
+
 option go_package = "./pb";
 
 package techschool.proto;
