@@ -5,7 +5,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func protobufToJSON(message proto.Message) (string, error) {
+func ProtobufToJSON(message proto.Message) (string, error) {
 	marshaller := jsonpb.Marshaler{
 		EnumsAsInts:  false,
 		EmitDefaults: true,

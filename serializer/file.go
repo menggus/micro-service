@@ -9,7 +9,7 @@ import (
 // JSON FIle Serializer
 
 func WriteProtobufToJSONFile(message proto.Message, filename string) error {
-	data, err := protobufToJSON(message)
+	data, err := ProtobufToJSON(message)
 	if err != nil {
 		return fmt.Errorf("cannot marshal protobuf to json: %w", err)
 	}
@@ -18,17 +18,6 @@ func WriteProtobufToJSONFile(message proto.Message, filename string) error {
 	if err != nil {
 		return fmt.Errorf("cannot write file to filename: %w", err)
 	}
-	return nil
-}
-
-func ReadProtobufFromJSONFile(filename string, message proto.Message) error {
-	//data, err := ioutil.ReadFile(filename)
-	//if err != nil {
-	//	return fmt.Errorf("cannot read file from filename: %w", err)
-	//}
-
-	//jsonpb.Unmarshal(, message)
-
 	return nil
 }
 
