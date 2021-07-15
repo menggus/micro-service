@@ -4,8 +4,11 @@ gen:
 clean:
 	rm pb/*.go
 
-run:
-	go run main.go
+server:
+	go run cmd/server/main.go
+
+client:
+	go run cmd/client/main.go
 
 test:
 	go test -cover -race ./...
