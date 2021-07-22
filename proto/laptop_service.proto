@@ -6,11 +6,13 @@ option go_package = "./pb";
 
 package techschool.proto;
 
+import "proto/filter_message.proto";
 import "proto/laptop_message.proto";
 
 
 service LaptopService {
     rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse) {};
+    rpc SearchLaptop(CreateLaptopRequest) returns (stream SearchLaptopResponse) {};
 }
 
 message CreateLaptopRequest {
@@ -19,6 +21,14 @@ message CreateLaptopRequest {
 
 message CreateLaptopResponse {
     string id = 1;
+}
+
+message SearchLaptopRequest {
+    Filter filter = 1;
+}
+
+message SearchLaptopResponse {
+    Laptop laptop = 1;
 }
 
 

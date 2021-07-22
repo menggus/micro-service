@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 	"library/v1/pb"
 	"log"
+	"time"
 )
 
 type LaptopServer struct {
@@ -45,6 +46,19 @@ func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLapt
 	}
 
 	// todo something
+	// Set timeout test
+	time.Sleep(6 * time.Second)
+
+	if ctx.Err() == context.DeadlineExceeded { // deadline cancel all exceeded
+		log.Println("deadline exceeded")
+		return nil, status.Error(codes.DeadlineExceeded, "deadline exceeded")
+	}
+
+	// Ctrl+C
+	if ctx.Err() == context.Canceled {
+		log.Println("request cancel")
+		return nil, status.Error(codes.Canceled, "request cancel")
+	}
 
 	// Save the laptop to store
 	// example, the laptop is saved in memory-store
