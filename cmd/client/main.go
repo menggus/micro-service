@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"io"
 	"library/v1/pb"
 	"library/v1/sample"
 	"log"
@@ -27,7 +28,21 @@ func main() {
 
 	// Create laptop service client
 	laptopClient := pb.NewLaptopServiceClient(conn)
+	for i:=0;i<10;i++ {
+		createLaptop(laptopClient)
+	}
 
+	// Search laptop
+	filter := &pb.Filter{
+		MaxPriceUsd: 3000,
+		MinCpuCores: 4,
+		MinCpuGhz: 2.5,
+		MinRam: &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 4},
+	}
+	searchLaptop(laptopClient, filter)
+}
+
+func createLaptop(laptopClient pb.LaptopServiceClient)  {
 	// Create a laptopCreateRequest req
 	laptop := sample.NewLaptop()
 	laptop.Id = ""
@@ -51,4 +66,43 @@ func main() {
 		return
 	}
 	log.Printf("Created laptop with id: %s\n", res.Id)
+}
+
+func searchLaptop(laptopClient pb.LaptopServiceClient, filter *pb.Filter) {
+	log.Println("search filter", filter)
+
+	// Set request time out
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+
+	// Create Search Laptop Request
+	req := &pb.SearchLaptopRequest{
+		Filter: filter,
+	}
+
+	// Call Grpc-stream Method
+	stream, err := laptopClient.SearchLaptop(ctx, req)
+	if err != nil {
+		log.Fatal("cannot search laptop: ", err)
+	}
+
+	// For Recv
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Fatal("cannot receive response: ", err)
+		}
+
+		laptop := res.GetLaptop()
+		log.Println("- found: ", laptop.GetId())
+		log.Println("+ brand: ", laptop.GetBrand())
+		log.Println("+ name: ", laptop.GetName())
+		log.Println("+ cpu cores: ", laptop.GetCpu().GetNumCores())
+		log.Println("+ cpu min ghz: ", laptop.GetCpu().GetMinGhz())
+		log.Println("+ ram: ", laptop.GetRam())
+		log.Println("+ price: ", laptop.GetPriceUsd(), "USD")
+	}
 }

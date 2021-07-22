@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LaptopServiceClient interface {
 	CreateLaptop(ctx context.Context, in *CreateLaptopRequest, opts ...grpc.CallOption) (*CreateLaptopResponse, error)
-	SearchLaptop(ctx context.Context, in *CreateLaptopRequest, opts ...grpc.CallOption) (LaptopService_SearchLaptopClient, error)
+	SearchLaptop(ctx context.Context, in *SearchLaptopRequest, opts ...grpc.CallOption) (LaptopService_SearchLaptopClient, error)
 }
 
 type laptopServiceClient struct {
@@ -39,7 +39,7 @@ func (c *laptopServiceClient) CreateLaptop(ctx context.Context, in *CreateLaptop
 	return out, nil
 }
 
-func (c *laptopServiceClient) SearchLaptop(ctx context.Context, in *CreateLaptopRequest, opts ...grpc.CallOption) (LaptopService_SearchLaptopClient, error) {
+func (c *laptopServiceClient) SearchLaptop(ctx context.Context, in *SearchLaptopRequest, opts ...grpc.CallOption) (LaptopService_SearchLaptopClient, error) {
 	stream, err := c.cc.NewStream(ctx, &LaptopService_ServiceDesc.Streams[0], "/techschool.proto.LaptopService/SearchLaptop", opts...)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (x *laptopServiceSearchLaptopClient) Recv() (*SearchLaptopResponse, error) 
 // for forward compatibility
 type LaptopServiceServer interface {
 	CreateLaptop(context.Context, *CreateLaptopRequest) (*CreateLaptopResponse, error)
-	SearchLaptop(*CreateLaptopRequest, LaptopService_SearchLaptopServer) error
+	SearchLaptop(*SearchLaptopRequest, LaptopService_SearchLaptopServer) error
 	mustEmbedUnimplementedLaptopServiceServer()
 }
 
@@ -87,7 +87,7 @@ type UnimplementedLaptopServiceServer struct {
 func (UnimplementedLaptopServiceServer) CreateLaptop(context.Context, *CreateLaptopRequest) (*CreateLaptopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateLaptop not implemented")
 }
-func (UnimplementedLaptopServiceServer) SearchLaptop(*CreateLaptopRequest, LaptopService_SearchLaptopServer) error {
+func (UnimplementedLaptopServiceServer) SearchLaptop(*SearchLaptopRequest, LaptopService_SearchLaptopServer) error {
 	return status.Errorf(codes.Unimplemented, "method SearchLaptop not implemented")
 }
 func (UnimplementedLaptopServiceServer) mustEmbedUnimplementedLaptopServiceServer() {}
@@ -122,7 +122,7 @@ func _LaptopService_CreateLaptop_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _LaptopService_SearchLaptop_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(CreateLaptopRequest)
+	m := new(SearchLaptopRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

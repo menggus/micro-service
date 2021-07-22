@@ -20,7 +20,7 @@ type LaptopStore interface {
 	Find(id string) (*pb.Laptop, error)
 
 	// Search laptop from store
-	Search(filter *pb.Filter, found func(laptop *pb.Laptop)) error
+	Search(filter *pb.Filter, found func(laptop *pb.Laptop) error ) error
 }
 
 type InMemoryLaptopStore struct {
@@ -50,7 +50,7 @@ func (store *InMemoryLaptopStore) Save(laptop *pb.Laptop) error {
 	// Security!!!, deep copy
 	//other := &pb.Laptop{}
 	//err := copier.Copy(other, laptop)
-	other, err := deepcopy(laptop)
+	other, err := deepCopy(laptop)
 	if err != nil {
 		return fmt.Errorf("cannot copy laptop data:%w", err)
 	}
@@ -76,7 +76,7 @@ func (store *InMemoryLaptopStore) Find(id string) (*pb.Laptop, error) {
 	//	return nil, fmt.Errorf("cannot copy laptop data: %w", err)
 	//}
 
-	return deepcopy(laptop)
+	return deepCopy(laptop)
 }
 
 // Search according to filter find laptop
@@ -85,7 +85,7 @@ func (store *InMemoryLaptopStore) Search(filter *pb.Filter, found func(laptop *p
 	defer store.mutex.RUnlock()
 	for _, laptop := range store.data {
 		if isQualified(filter, laptop) {
-			other, err := deepcopy(laptop)
+			other, err := deepCopy(laptop)
 			if err != nil {
 				return err
 			}
@@ -138,7 +138,8 @@ func toBit(m *pb.Memory) uint64 {
 	}
 }
 
-func deepcopy(l *pb.Laptop) (*pb.Laptop, error) {
+
+func deepCopy(l *pb.Laptop) (*pb.Laptop, error) {
 	other := &pb.Laptop{}
 	err := copier.Copy(other, l)
 	if err != nil {

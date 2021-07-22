@@ -128,7 +128,7 @@ func NewLaptop() *pb.Laptop {
 		Screen:      NewScreen(),
 		Keyboard:    NewKeyboard(),
 		Weight:      &pb.Laptop_WeightKg{WeightKg: 1.2},
-		PriceUsd:    5600,
+		PriceUsd:    randomFloat64(2000, 5000),
 		ReleaseYear: 2021,
 		UpdatedAt:   ptypes.TimestampNow(),
 	}

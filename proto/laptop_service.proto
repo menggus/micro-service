@@ -12,7 +12,7 @@ import "proto/laptop_message.proto";
 
 service LaptopService {
     rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse) {};
-    rpc SearchLaptop(CreateLaptopRequest) returns (stream SearchLaptopResponse) {};
+    rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse) {};
 }
 
 message CreateLaptopRequest {
