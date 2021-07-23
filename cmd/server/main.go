@@ -19,9 +19,11 @@ func main() {
 	// Create a laptop service and  grpcServer
 
 	// after, register laptop service in grpc server
-	laptopserver := service.NewLaptopServer(service.NewInMemoryLaptopStore())
+	laptopStore := service.NewInMemoryLaptopStore()
+	imageStore := service.NewDiskImageStore("img")
+	laptopServer := service.NewLaptopServer(laptopStore, imageStore)
 	grpcServer := grpc.NewServer()
-	pb.RegisterLaptopServiceServer(grpcServer, laptopserver)
+	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
 
 	// Create a net listener
 	address := fmt.Sprintf("0.0.0.0:%d", *port)

@@ -18,7 +18,8 @@ func TestClientCreateLaptop(t *testing.T) {
 	t.Parallel()
 
 	// Start a grpc server
-	laptopServer, serveAddress := startTestLaptopServe(t, NewInMemoryLaptopStore())
+	laptopStore := NewInMemoryLaptopStore()
+	serveAddress := startTestLaptopServe(t, laptopStore, nil)
 	laptopClient := newTestLaptopClient(t, serveAddress)
 
 	// Create some laptop object
@@ -35,7 +36,7 @@ func TestClientCreateLaptop(t *testing.T) {
 	require.Equal(t, expectedID, res.Id)
 
 	// Check that the laptop is saved to the store
-	other, err := laptopServer.Store.Find(res.Id)
+	other, err := laptopStore.Find(res.Id)
 	require.NoError(t, err)
 	require.NotNil(t, other)
 
@@ -57,7 +58,7 @@ func TestSearchLaptop(t *testing.T) {
 	}
 
 	// Create store
-	store := NewInMemoryLaptopStore()
+	laptopStore := NewInMemoryLaptopStore()
 
 	// Mock data
 	exceptIDs := make(map[string]bool)
@@ -87,13 +88,13 @@ func TestSearchLaptop(t *testing.T) {
 			laptop.Ram = &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 64}
 			exceptIDs[laptop.Id] = true
 		}
-		err := store.Save(laptop)
+		err := laptopStore.Save(laptop)
 		require.NoError(t, err)
 		log.Println(exceptIDs)
 	}
 
 	// Create server and client
-	_, serverAddress := startTestLaptopServe(t, store)
+	serverAddress := startTestLaptopServe(t, laptopStore, nil)
 	laptopClient := newTestLaptopClient(t, serverAddress)
 
 	// Create request
@@ -118,9 +119,9 @@ func TestSearchLaptop(t *testing.T) {
 }
 
 // Create a grpc server
-func startTestLaptopServe(t *testing.T, store LaptopStore) (*LaptopServer, string) {
+func startTestLaptopServe(t *testing.T, laptopStore LaptopStore, imageStore ImageStore) string {
 	// 1. prepare customer Server
-	laptopServer := NewLaptopServer(store)
+	laptopServer := NewLaptopServer(laptopStore, imageStore)
 
 	// 2. New a grpc Server and register
 	grpcServer := grpc.NewServer()
@@ -134,7 +135,7 @@ func startTestLaptopServe(t *testing.T, store LaptopStore) (*LaptopServer, strin
 	// 4. start grpc server
 	go grpcServer.Serve(listener)
 
-	return laptopServer, listener.Addr().String()
+	return listener.Addr().String()
 }
 
 // Create a grpc client
