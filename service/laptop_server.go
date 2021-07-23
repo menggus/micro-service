@@ -46,7 +46,7 @@ func (server *LaptopServer) CreateLaptop(ctx context.Context, req *pb.CreateLapt
 
 	// todo something
 	// Set timeout test
-	//time.Sleep(6 * time.Second)
+	// time.Sleep(6 * time.Second)
 
 	if ctx.Err() == context.DeadlineExceeded { // deadline cancel all exceeded
 		log.Println("deadline exceeded")
@@ -86,10 +86,11 @@ func (server *LaptopServer) SearchLaptop(req *pb.SearchLaptopRequest, stream pb.
 
 	// according filter to search laptop and callback func
 	err := server.Store.Search(
+		stream.Context(),
 		filter,
 		func(laptop *pb.Laptop) error {
 			// Construct pb.SearchLaptopResponse
-			res:= &pb.SearchLaptopResponse{Laptop: laptop}
+			res := &pb.SearchLaptopResponse{Laptop: laptop}
 
 			// Use stream method to send it
 			err := stream.Send(res)

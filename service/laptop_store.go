@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"library/v1/pb"
+	"log"
 	"sync"
+	"time"
 )
 
 // ErrAlreadyExists is returned when a record with the same ID already exists in the store
@@ -20,7 +23,7 @@ type LaptopStore interface {
 	Find(id string) (*pb.Laptop, error)
 
 	// Search laptop from store
-	Search(filter *pb.Filter, found func(laptop *pb.Laptop) error ) error
+	Search(ctx context.Context, filter *pb.Filter, found func(laptop *pb.Laptop) error) error
 }
 
 type InMemoryLaptopStore struct {
@@ -80,16 +83,25 @@ func (store *InMemoryLaptopStore) Find(id string) (*pb.Laptop, error) {
 }
 
 // Search according to filter find laptop
-func (store *InMemoryLaptopStore) Search(filter *pb.Filter, found func(laptop *pb.Laptop) error) error {
+func (store *InMemoryLaptopStore) Search(ctx context.Context, filter *pb.Filter, found func(laptop *pb.Laptop) error) error {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
 	for _, laptop := range store.data {
+		time.Sleep(time.Second)
+		log.Println("checking laptop id: ", laptop.GetId())
+
+		// Deadline exceeded control
+		if ctx.Err() == context.DeadlineExceeded || ctx.Err() == context.Canceled {
+			log.Println("context is cancel")
+			return errors.New("context is cancel")
+		}
+
+		// Filter laptop
 		if isQualified(filter, laptop) {
 			other, err := deepCopy(laptop)
 			if err != nil {
 				return err
 			}
-			// todo  =>
 			err = found(other)
 			if err != nil {
 				return err
@@ -117,7 +129,7 @@ func isQualified(f *pb.Filter, l *pb.Laptop) bool {
 	return true
 }
 
-// to transfer bit unit,
+// To transfer bit unit,
 func toBit(m *pb.Memory) uint64 {
 	value := m.GetValue()
 	switch m.GetUnit() {
@@ -137,7 +149,6 @@ func toBit(m *pb.Memory) uint64 {
 		return 0
 	}
 }
-
 
 func deepCopy(l *pb.Laptop) (*pb.Laptop, error) {
 	other := &pb.Laptop{}
