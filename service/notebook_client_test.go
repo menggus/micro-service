@@ -8,6 +8,7 @@ import (
 	"library/v1/pb"
 	"library/v1/sample"
 	"library/v1/serializer"
+	"log"
 	"net"
 	"testing"
 )
@@ -49,7 +50,7 @@ func TestSearchLaptop(t *testing.T) {
 
 	// Create filter
 	filter := &pb.Filter{
-		MaxPriceUsd: 2001,
+		MaxPriceUsd: 3000,
 		MinCpuCores: 4,
 		MinCpuGhz:   3.0,
 		MinRam:      &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 4},
@@ -64,30 +65,31 @@ func TestSearchLaptop(t *testing.T) {
 		laptop := sample.NewLaptop()
 		switch i {
 		case 0:
-			laptop.PriceUsd = 2000
+			laptop.PriceUsd = 3002
 		case 1:
 			laptop.Cpu.NumCores = 2
 		case 2:
 			laptop.Cpu.MinGhz = 2.0
 		case 3:
-			laptop.Ram = &pb.Memory{Unit: pb.Memory_MEGABYTE, Value: 4096}
+			laptop.Ram = &pb.Memory{Unit: pb.Memory_MEGABYTE, Value: 2048}
 		case 4:
 			laptop.PriceUsd = 1999
 			laptop.Cpu.NumCores = 4
-			laptop.Cpu.MinGhz = 2.5
+			laptop.Cpu.MinGhz = 3.2
 			laptop.Cpu.MaxGhz = 4.5
 			laptop.Ram = &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 16}
-			exceptIDs[laptop.GetId()] = true
+			exceptIDs[laptop.Id] = true
 		case 5:
 			laptop.PriceUsd = 2000
 			laptop.Cpu.NumCores = 6
-			laptop.Cpu.MinGhz = 2.8
+			laptop.Cpu.MinGhz = 3.1
 			laptop.Cpu.MaxGhz = 5.0
 			laptop.Ram = &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 64}
-			exceptIDs[laptop.GetId()] = true
+			exceptIDs[laptop.Id] = true
 		}
 		err := store.Save(laptop)
 		require.NoError(t, err)
+		log.Println(exceptIDs)
 	}
 
 	// Create server and client

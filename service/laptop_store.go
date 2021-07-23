@@ -8,7 +8,6 @@ import (
 	"library/v1/pb"
 	"log"
 	"sync"
-	"time"
 )
 
 // ErrAlreadyExists is returned when a record with the same ID already exists in the store
@@ -87,8 +86,8 @@ func (store *InMemoryLaptopStore) Search(ctx context.Context, filter *pb.Filter,
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
 	for _, laptop := range store.data {
-		time.Sleep(time.Second)
-		log.Println("checking laptop id: ", laptop.GetId())
+		//time.Sleep(time.Second)
+		//log.Println("checking laptop id: ", laptop.GetId())
 
 		// Deadline exceeded control
 		if ctx.Err() == context.DeadlineExceeded || ctx.Err() == context.Canceled {
