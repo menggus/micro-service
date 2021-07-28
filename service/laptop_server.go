@@ -133,7 +133,7 @@ func (server *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServe
 	// Checked laptop if exists
 	laptop, err := server.laptopStore.Find(laptopId)
 	if err != nil {
-		return logError(status.Errorf(codes.Internal, "cannot find laptop %w", err))
+		return logError(status.Errorf(codes.Internal, "cannot find laptop %v", err))
 	}
 	if laptop == nil {
 		return logError(status.Errorf(codes.NotFound, "laptop[%s] doesn't exists", laptopId))
@@ -144,46 +144,53 @@ func (server *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServe
 	imageSize := 0
 	for {
 		log.Println("wait receive more data")
+
+		if err = contextError(stream.Context()); err != nil {
+			return err
+		}
+
 		req, err := stream.Recv()
-		if err != io.EOF {
+		if err == io.EOF {
 			log.Println("no more data")
 			break
 		}
 		if err != nil {
-			return logError(status.Errorf(codes.Unknown, "cannot reveive chunk data: %w", err))
+			return logError(status.Errorf(codes.Unknown, "cannot receive chunk data: %v", err))
 		}
 
 		// Start receive chunk data
 		chunkData := req.GetChunkData()
 		size := len(chunkData)
+		log.Println("chunk with seize: ", size)
 
 		imageSize += size
+
 		if imageSize > MaxImageSize {
 			return logError(status.Errorf(codes.InvalidArgument, "image is too large: [%d > %d]", imageSize, MaxImageSize))
 		}
 
 		_, err = imageData.Write(chunkData)
 		if err != nil {
-			return logError(status.Errorf(codes.Internal, "data cannot write: %w", err))
+			return logError(status.Errorf(codes.Internal, "data cannot write: %v", err))
 		}
 	}
 
 	imageID, err := server.imageStore.Save(laptopId, imageType, imageData)
 	if err != nil {
-		return logError(status.Errorf(codes.Internal, "cannot save image to the store: %w", err))
+		return logError(status.Errorf(codes.Internal, "cannot save image to the store: %v", err))
 	}
 
 	res := &pb.UploadImageResponse{
-		Id:   laptopId,
+		Id:   imageID,
 		Size: uint32(imageSize),
 	}
 
 	err = stream.SendAndClose(res)
 	if err != nil {
-		return logError(status.Errorf(codes.Unknown, "cannot send response: %w", err))
+		return logError(status.Errorf(codes.Unknown, "cannot send response: %v", err))
 	}
 
-	log.Printf("save image with laptop: %s , size: %d", imageID, imageSize)
+	log.Printf("save image with laptop imageID: %s , size: %d", imageID, imageSize)
 	return nil
 }
 
@@ -192,4 +199,15 @@ func logError(err error) error {
 		log.Println(err)
 	}
 	return err
+}
+
+func contextError(ctx context.Context) error {
+	switch ctx.Err() {
+	case context.Canceled:
+		return logError(status.Errorf(codes.Canceled, "request is cancel"))
+	case context.DeadlineExceeded:
+		return logError(status.Errorf(codes.DeadlineExceeded, "request is DeadlineExceeded"))
+	default:
+		return nil
+	}
 }

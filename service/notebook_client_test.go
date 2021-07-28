@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"io"
@@ -10,6 +12,8 @@ import (
 	"library/v1/serializer"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -156,4 +160,76 @@ func requireSameLaptop(t *testing.T, laptop1, laptop2 *pb.Laptop) {
 	require.NoError(t, err)
 
 	require.Equal(t, json1, json2)
+}
+
+// TestUploadImageClient test upload image
+func TestUploadImageClient(t *testing.T) {
+	t.Parallel()
+
+	testImageFolder := "../tmp"
+
+	laptopStore := NewInMemoryLaptopStore()
+	imageStore := NewDiskImageStore(testImageFolder)
+
+	// Require Save laptop no error
+	laptop := sample.NewLaptop()
+	err := laptopStore.Save(laptop)
+	require.NoError(t, err)
+
+	serverAddress := startTestLaptopServe(t, laptopStore, imageStore)
+	laptopClient := newTestLaptopClient(t, serverAddress)
+
+	// file test
+	filePath := fmt.Sprintf("%s/laptop.png", "../tmp")
+	file, err := os.Open(filePath)
+	require.NoError(t, err)
+	defer file.Close()
+
+	//
+	stream, err := laptopClient.UploadImage(context.Background())
+	require.NoError(t, err)
+
+	// 4. construct a pb.UploadImageRequest
+	req := &pb.UploadImageRequest{
+		Data: &pb.UploadImageRequest_Info{
+			Info: &pb.ImageInfo{
+				LaptopId:  laptop.GetId(),
+				ImageType: filepath.Ext(filePath),
+			},
+		},
+	}
+
+	// 5. Send req by stream
+	err = stream.Send(req)
+	require.NoError(t, err)
+
+	// 6.stream method send image data
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 1024)
+	size := 0
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+
+		req := &pb.UploadImageRequest{
+			Data: &pb.UploadImageRequest_ChunkData{
+				ChunkData: buffer[:n], // attention buffer used
+			},
+		}
+
+		size += len(buffer[:n])
+		err = stream.Send(req)
+		require.NoError(t, err)
+	}
+
+	res, err := stream.CloseAndRecv()
+	require.NoError(t, err)
+	require.NotZero(t, res.GetId())
+	require.EqualValues(t, res.GetSize(), size)
+
+	saveImagePath := fmt.Sprintf("%s/%s%s", testImageFolder, res.GetId(), filepath.Ext(filePath))
+	require.FileExists(t, saveImagePath)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"google.golang.org/grpc"
@@ -10,6 +11,8 @@ import (
 	"library/v1/pb"
 	"library/v1/sample"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -26,26 +29,16 @@ func main() {
 		log.Fatal("cannot dial server: ", err)
 	}
 
-	// Create laptop service client
-	laptopClient := pb.NewLaptopServiceClient(conn)
-	for i := 0; i < 10; i++ {
-		createLaptop(laptopClient)
-	}
+	laptopClient := testCreateLaptop(conn)
 
-	// Search laptop
-	filter := &pb.Filter{
-		MaxPriceUsd: 3000,
-		MinCpuCores: 4,
-		MinCpuGhz:   2.5,
-		MinRam:      &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 4},
-	}
-	searchLaptop(laptopClient, filter)
+	//testSearchLaptop(laptopClient)
+
+	testUploadImage(laptopClient)
+
 }
 
-func createLaptop(laptopClient pb.LaptopServiceClient) {
+func createLaptop(laptopClient pb.LaptopServiceClient, laptop *pb.Laptop) {
 	// Create a laptopCreateRequest req
-	laptop := sample.NewLaptop()
-	laptop.Id = ""
 	req := &pb.CreateLaptopRequest{Laptop: laptop}
 
 	// Call CreateLaptop service
@@ -105,4 +98,100 @@ func searchLaptop(laptopClient pb.LaptopServiceClient, filter *pb.Filter) {
 		log.Println("+ ram: ", laptop.GetRam())
 		log.Println("+ price: ", laptop.GetPriceUsd(), "USD")
 	}
+}
+
+func testCreateLaptop(conn *grpc.ClientConn) pb.LaptopServiceClient {
+	// Create laptop service client
+	laptopClient := pb.NewLaptopServiceClient(conn)
+
+	return laptopClient
+}
+
+func testSearchLaptop(laptopClient pb.LaptopServiceClient) {
+	for i := 0; i < 10; i++ {
+		createLaptop(laptopClient, sample.NewLaptop())
+	}
+	// Search laptop according to filter
+	filter := &pb.Filter{
+		MaxPriceUsd: 3000,
+		MinCpuCores: 4,
+		MinCpuGhz:   2.5,
+		MinRam:      &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 4},
+	}
+	searchLaptop(laptopClient, filter)
+}
+
+func testUploadImage(laptopClient pb.LaptopServiceClient) {
+	laptop := sample.NewLaptop()
+	createLaptop(laptopClient, laptop)
+	UploadImage(laptopClient, laptop.GetId(), "tmp/laptop.png")
+}
+
+func UploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath string) {
+	// 1.prepare image data
+	file, err := os.Open(imagePath)
+	if err != nil {
+		log.Fatal("cannot open image file: ", err)
+	}
+	defer file.Close()
+
+	// 2.timeout handle
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 3.generate upload image stream
+	stream, err := laptopClient.UploadImage(ctx)
+	if err != nil {
+		log.Fatal("cannot upload image", err)
+	}
+
+	// 4. construct a pb.UploadImageRequest
+	req := &pb.UploadImageRequest{
+		Data: &pb.UploadImageRequest_Info{
+			Info: &pb.ImageInfo{
+				LaptopId:  laptopID,
+				ImageType: filepath.Ext(imagePath),
+			},
+		},
+	}
+
+	// 5. Send req by stream
+	err = stream.Send(req)
+	if err != nil {
+		log.Fatal("cannot send  image info", err)
+	}
+
+	// 6.stream method send image data
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 1024)
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal("cannot read chunk to the buffer: ", err)
+		}
+
+		req := &pb.UploadImageRequest{
+			Data: &pb.UploadImageRequest_ChunkData{
+				ChunkData: buffer[:n], // attention buffer used
+			},
+		}
+
+		//log.Println(len(buffer[:n]))
+
+		err = stream.Send(req)
+		if err != nil {
+			err2 := stream.RecvMsg(nil)
+			log.Fatal("cannot send image file data: ", err, err2)
+		}
+	}
+
+	// 7. close and receive response, print response result
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatal("cannot receive response: ", err)
+	}
+	log.Printf("Upload image %s succeed, size is %d", res.GetId(), res.GetSize())
 }
