@@ -21,9 +21,11 @@ type InMemoryRatingStore struct {
 }
 
 func (store *InMemoryRatingStore) Add(laptopID string, score float64) (*Rating, error) {
+	// used a lock
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
+	// Detect if laptopID exists and update rating
 	rat := store.rating[laptopID]
 	if rat == nil {
 		rat = &Rating{
