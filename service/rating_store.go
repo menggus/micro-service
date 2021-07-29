@@ -2,8 +2,8 @@ package service
 
 import "sync"
 
-// RateStore is a interface to store laptop rating
-type RateStore interface {
+// RatingStore is a interface to store laptop rating
+type RatingStore interface {
 	// Add a new laptop score to the store and returns its rating
 	Add(laptopID string, score float64) (*Rating, error)
 }
@@ -18,6 +18,13 @@ type Rating struct {
 type InMemoryRatingStore struct {
 	mutex  sync.RWMutex
 	rating map[string]*Rating
+}
+
+// NewInMemoryRatingStore return *InMemoryRatingStore
+func NewInMemoryRatingStore() *InMemoryRatingStore {
+	return &InMemoryRatingStore{
+		rating: make(map[string]*Rating),
+	}
 }
 
 func (store *InMemoryRatingStore) Add(laptopID string, score float64) (*Rating, error) {

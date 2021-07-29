@@ -18,14 +18,16 @@ const MaxImageSize = 1 << 20
 type LaptopServer struct {
 	laptopStore                         LaptopStore
 	imageStore                          ImageStore
+	ratingStore                         RatingStore
 	pb.UnimplementedLaptopServiceServer // 必须嵌入以具有向前兼容的实现
 }
 
 // NewLaptopServer create *LaptopServer
-func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore, ratingStore RatingStore) *LaptopServer {
 	return &LaptopServer{
 		laptopStore: laptopStore,
 		imageStore:  imageStore,
+		ratingStore: ratingStore,
 	}
 }
 
@@ -195,7 +197,52 @@ func (server *LaptopServer) UploadImage(stream pb.LaptopService_UploadImageServe
 }
 
 func (server *LaptopServer) RateLaptop(stream pb.LaptopService_RateLaptopServer) error {
+	for {
+		// timeout or cancel handle
+		if err := contextError(stream.Context()); err != nil {
+			return err
+		}
 
+		// start receive stream data
+		req, err := stream.Recv()
+		if err == io.EOF {
+			log.Println("no more data")
+			break
+		}
+		if err != nil {
+			return logError(status.Errorf(codes.DataLoss, "cannot receive request: %v", err))
+		}
+
+		// Get data and log
+		laptopId := req.GetLaptopId()
+		laptopScore := req.GetScore()
+		log.Printf("receive a rat-laptop stream with laptopID: %s, Score: %.2f", laptopId, laptopScore)
+
+		// search data from server
+		found, err := server.laptopStore.Find(laptopId)
+		if err != nil {
+			return logError(status.Errorf(codes.Internal, "cannot find laptop: %v", err))
+		}
+		if found == nil {
+			return logError(status.Error(codes.NotFound, "laptopID is not find"))
+		}
+
+		rating, err := server.ratingStore.Add(laptopId, laptopScore)
+		if err != nil {
+			return logError(status.Error(codes.Internal, "not save laptop rat"))
+		}
+
+		res := &pb.RateLaptopResponse{
+			LaptopId:    laptopId,
+			RateCount:   rating.Count,
+			AverageRate: rating.Sum / float64(rating.Count),
+		}
+
+		err = stream.Send(res)
+		if err != nil {
+			return logError(status.Errorf(codes.Internal, "send stream data Failed: %v", err))
+		}
+	}
 	return nil
 }
 
@@ -209,9 +256,9 @@ func logError(err error) error {
 func contextError(ctx context.Context) error {
 	switch ctx.Err() {
 	case context.Canceled:
-		return logError(status.Errorf(codes.Canceled, "request is cancel"))
+		return logError(status.Error(codes.Canceled, "request is cancel"))
 	case context.DeadlineExceeded:
-		return logError(status.Errorf(codes.DeadlineExceeded, "request is DeadlineExceeded"))
+		return logError(status.Error(codes.DeadlineExceeded, "request is DeadlineExceeded"))
 	default:
 		return nil
 	}
