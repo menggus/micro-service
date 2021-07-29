@@ -23,7 +23,7 @@ func TestClientCreateLaptop(t *testing.T) {
 
 	// Start a grpc server
 	laptopStore := NewInMemoryLaptopStore()
-	serveAddress := startTestLaptopServe(t, laptopStore, nil)
+	serveAddress := startTestLaptopServe(t, laptopStore, nil, nil)
 	laptopClient := newTestLaptopClient(t, serveAddress)
 
 	// Create some laptop object
@@ -98,7 +98,7 @@ func TestSearchLaptop(t *testing.T) {
 	}
 
 	// Create server and client
-	serverAddress := startTestLaptopServe(t, laptopStore, nil)
+	serverAddress := startTestLaptopServe(t, laptopStore, nil, nil)
 	laptopClient := newTestLaptopClient(t, serverAddress)
 
 	// Create request
@@ -123,9 +123,9 @@ func TestSearchLaptop(t *testing.T) {
 }
 
 // Create a grpc server
-func startTestLaptopServe(t *testing.T, laptopStore LaptopStore, imageStore ImageStore) string {
+func startTestLaptopServe(t *testing.T, laptopStore LaptopStore, imageStore ImageStore, ratingStore RatingStore) string {
 	// 1. prepare customer Server
-	laptopServer := NewLaptopServer(laptopStore, imageStore, nil)
+	laptopServer := NewLaptopServer(laptopStore, imageStore, ratingStore)
 
 	// 2. New a grpc Server and register
 	grpcServer := grpc.NewServer()
@@ -176,7 +176,7 @@ func TestUploadImageClient(t *testing.T) {
 	err := laptopStore.Save(laptop)
 	require.NoError(t, err)
 
-	serverAddress := startTestLaptopServe(t, laptopStore, imageStore)
+	serverAddress := startTestLaptopServe(t, laptopStore, imageStore, nil)
 	laptopClient := newTestLaptopClient(t, serverAddress)
 
 	// file test
@@ -232,4 +232,54 @@ func TestUploadImageClient(t *testing.T) {
 
 	saveImagePath := fmt.Sprintf("%s/%s%s", testImageFolder, res.GetId(), filepath.Ext(filePath))
 	require.FileExists(t, saveImagePath)
+}
+
+// TestRatingLaptopClient test rating laptop
+func TestRatingLaptopClient(t *testing.T) {
+	t.Parallel()
+
+	// Create server and client
+	laptopStore := NewInMemoryLaptopStore()
+	ratingStore := NewInMemoryRatingStore()
+
+	// Require Save laptop no error
+	laptop := sample.NewLaptop()
+	err := laptopStore.Save(laptop)
+	require.NoError(t, err)
+
+	serverAddress := startTestLaptopServe(t, laptopStore, nil, ratingStore)
+	laptopClient := newTestLaptopClient(t, serverAddress)
+
+	stream, err := laptopClient.RateLaptop(context.Background())
+	require.NoError(t, err)
+
+	scores := []float64{8, 7.5, 10}
+	averageScore := []float64{8, 7.75, 8.5}
+
+	n := len(scores)
+	for i := 0; i < n; i++ {
+		req := &pb.RateLaptopRequest{
+			LaptopId: laptop.GetId(),
+			Score:    scores[i],
+		}
+
+		err := stream.Send(req)
+		require.NoError(t, err)
+	}
+
+	err = stream.CloseSend()
+	require.NoError(t, err)
+
+	for idx := 0; ; idx++ {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			require.Equal(t, n, idx)
+			break
+		}
+		require.NoError(t, err)
+		require.Equal(t, laptop.GetId(), res.GetLaptopId())
+		require.Equal(t, uint32(idx+1), res.RateCount)
+		require.Equal(t, averageScore[idx], res.GetAverageRate())
+	}
+
 }

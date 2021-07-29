@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -33,7 +35,9 @@ func main() {
 
 	//testSearchLaptop(laptopClient)
 
-	testUploadImage(laptopClient)
+	//testUploadImage(laptopClient)
+
+	testRatingLaptop(laptopClient)
 
 }
 
@@ -59,6 +63,13 @@ func createLaptop(laptopClient pb.LaptopServiceClient, laptop *pb.Laptop) {
 		return
 	}
 	log.Printf("Created laptop with id: %s\n", res.Id)
+}
+
+func testCreateLaptop(conn *grpc.ClientConn) pb.LaptopServiceClient {
+	// Create laptop service client
+	laptopClient := pb.NewLaptopServiceClient(conn)
+
+	return laptopClient
 }
 
 func searchLaptop(laptopClient pb.LaptopServiceClient, filter *pb.Filter) {
@@ -100,13 +111,6 @@ func searchLaptop(laptopClient pb.LaptopServiceClient, filter *pb.Filter) {
 	}
 }
 
-func testCreateLaptop(conn *grpc.ClientConn) pb.LaptopServiceClient {
-	// Create laptop service client
-	laptopClient := pb.NewLaptopServiceClient(conn)
-
-	return laptopClient
-}
-
 func testSearchLaptop(laptopClient pb.LaptopServiceClient) {
 	for i := 0; i < 10; i++ {
 		createLaptop(laptopClient, sample.NewLaptop())
@@ -119,12 +123,6 @@ func testSearchLaptop(laptopClient pb.LaptopServiceClient) {
 		MinRam:      &pb.Memory{Unit: pb.Memory_GIGABYTE, Value: 4},
 	}
 	searchLaptop(laptopClient, filter)
-}
-
-func testUploadImage(laptopClient pb.LaptopServiceClient) {
-	laptop := sample.NewLaptop()
-	createLaptop(laptopClient, laptop)
-	UploadImage(laptopClient, laptop.GetId(), "tmp/laptop.png")
 }
 
 func UploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath string) {
@@ -194,4 +192,91 @@ func UploadImage(laptopClient pb.LaptopServiceClient, laptopID string, imagePath
 		log.Fatal("cannot receive response: ", err)
 	}
 	log.Printf("Upload image %s succeed, size is %d", res.GetId(), res.GetSize())
+}
+
+func testUploadImage(laptopClient pb.LaptopServiceClient) {
+	laptop := sample.NewLaptop()
+	createLaptop(laptopClient, laptop)
+	UploadImage(laptopClient, laptop.GetId(), "tmp/laptop.png")
+}
+
+func ratingLaptop(laptopClient pb.LaptopServiceClient, laptopIDs []string, scores []float64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := laptopClient.RateLaptop(ctx)
+	if err != nil {
+		return fmt.Errorf("cnanot rate laptop %v", err)
+	}
+
+	// start goroutine receive stream response
+	waitResponse := make(chan error)
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				log.Println("no more data")
+				waitResponse <- nil
+				return
+			}
+			if err != nil {
+				waitResponse <- fmt.Errorf("cannot receive stream response %v", err)
+				return
+			}
+
+			log.Printf("receive rating-laptop with laptopID: %s, average score %.2f\n", res.GetLaptopId(), res.GetAverageRate())
+		}
+	}()
+
+	// generate pb.RateLaptopRequest and send request
+	for i, laptopID := range laptopIDs {
+		req := &pb.RateLaptopRequest{
+			LaptopId: laptopID,
+			Score:    scores[i],
+		}
+
+		err := stream.Send(req)
+		if err != nil {
+			return fmt.Errorf("cannot send stream request: %v", err)
+		}
+		log.Printf("Send request: %v", req)
+	}
+	err = stream.CloseSend()
+	if err != nil {
+		return fmt.Errorf("cannot close stream %v", err)
+	}
+
+	err = <-waitResponse
+
+	return err
+}
+
+func testRatingLaptop(laptopClient pb.LaptopServiceClient) {
+	n := 3
+	// create laptopIDS and createLaptop store in memoryStore
+	laptopIDs := make([]string, n)
+	for i := 0; i < n; i++ {
+		laptop := sample.NewLaptop()
+		laptopIDs[i] = laptop.GetId()
+		createLaptop(laptopClient, laptop)
+	}
+	// generate score list
+	scores := make([]float64, n)
+	for {
+		fmt.Println("rate laptop y/n ?")
+		var answer string
+		fmt.Scan(&answer)
+
+		if strings.ToLower(answer) != "y" {
+			break
+		}
+		for i := 0; i < n; i++ {
+			scores[i] = sample.RandomLaptopScore()
+		}
+
+		err := ratingLaptop(laptopClient, laptopIDs, scores)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
