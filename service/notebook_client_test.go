@@ -125,7 +125,7 @@ func TestSearchLaptop(t *testing.T) {
 // Create a grpc server
 func startTestLaptopServe(t *testing.T, laptopStore LaptopStore, imageStore ImageStore) string {
 	// 1. prepare customer Server
-	laptopServer := NewLaptopServer(laptopStore, imageStore)
+	laptopServer := NewLaptopServer(laptopStore, imageStore, nil)
 
 	// 2. New a grpc Server and register
 	grpcServer := grpc.NewServer()
