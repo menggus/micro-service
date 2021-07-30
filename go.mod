@@ -3,6 +3,7 @@ module library/v1
 go 1.16
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.0
 	github.com/google/uuid v1.3.0
 	github.com/jinzhu/copier v0.3.2
