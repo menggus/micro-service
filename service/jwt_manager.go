@@ -40,7 +40,7 @@ func (manager *JWTManager) Generate(user *User) (string, error) {
 	// ***** consider more complex signing method in production
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString(manager.secretKey)
+	return token.SignedString([]byte(manager.secretKey))
 }
 
 // Verify verify a access token and return user claims
