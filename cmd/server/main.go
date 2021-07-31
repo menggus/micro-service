@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"google.golang.org/grpc"
@@ -17,26 +16,6 @@ const (
 	secretKey    = "secret"
 	timeDuration = 5 * time.Minute
 )
-
-func unaryInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (resp interface{}, err error) {
-
-	log.Println(">----------------Unary Interceptor: ", info.FullMethod)
-	return handler(ctx, req)
-}
-
-func streamInterceptor(
-	srv interface{},
-	ss grpc.ServerStream,
-	info *grpc.StreamServerInfo,
-	handler grpc.StreamHandler) error {
-
-	log.Println(">----------------stream Interceptor: ", info.FullMethod)
-	return handler(srv, ss)
-}
 
 func seedUser(store service.UserStore) error {
 	err := CreateUser(store, "admin", "admin", "role")
@@ -54,6 +33,15 @@ func CreateUser(userStore service.UserStore, username string, password string, r
 	}
 
 	return userStore.Save(user)
+}
+
+func accessibleRoles() map[string][]string {
+	const serverPath = "/techschool.proto.LaptopService/"
+	return map[string][]string{
+		serverPath + "CreateLaptop": {"admin"},
+		serverPath + "UploadImage":  {"admin"},
+		serverPath + "RatingLaptop": {"admin", "user"},
+	}
 }
 
 func main() {
@@ -79,9 +67,10 @@ func main() {
 	jwtManager := service.NewJWTManager(secretKey, timeDuration)
 	authServer := service.NewAuthServer(userStore, jwtManager)
 
+	interceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles())
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(unaryInterceptor),
-		grpc.StreamInterceptor(streamInterceptor),
+		grpc.UnaryInterceptor(interceptor.Unary()),
+		grpc.StreamInterceptor(interceptor.Stream()),
 	)
 
 	pb.RegisterAuthServiceServer(grpcServer, authServer)
