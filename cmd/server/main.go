@@ -1,10 +1,14 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+	"io/ioutil"
 	"library/v1/pb"
 	"library/v1/service"
 	"log"
@@ -44,6 +48,32 @@ func accessibleRoles() map[string][]string {
 	}
 }
 
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	// load certificate of the CA who signed client's certificate
+	pemClientCA, err := ioutil.ReadFile("certificate/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemClientCA) {
+		return nil, fmt.Errorf("failed to add client CA's certificate")
+	}
+
+	// load server's certificate and private key
+	serverCert, err := tls.LoadX509KeyPair("certificate/server-cert.pem", "certificate/server-key.pem")
+	if err != nil {
+		return nil, err
+	}
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool, // use verify client certificate set
+	}
+
+	return credentials.NewTLS(config), nil
+}
+
 func main() {
 	// Parse port param by flag package
 	port := flag.Int("port", 0, "the is server port")
@@ -67,8 +97,14 @@ func main() {
 	jwtManager := service.NewJWTManager(secretKey, timeDuration)
 	authServer := service.NewAuthServer(userStore, jwtManager)
 
+	tlsCredentials, err := loadTLSCredentials()
+	if err != nil {
+		log.Fatal("cannot load TLS credentials: ", err)
+	}
+
 	interceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles())
 	grpcServer := grpc.NewServer(
+		grpc.Creds(tlsCredentials),
 		grpc.UnaryInterceptor(interceptor.Unary()),
 		grpc.StreamInterceptor(interceptor.Stream()),
 	)

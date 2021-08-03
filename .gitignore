@@ -15,3 +15,5 @@
 # vendor/
 .idea/
 tmp/
+certificate/*.pem
+certificate/*.srl

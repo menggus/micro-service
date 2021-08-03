@@ -74,7 +74,7 @@ func (interceptor *AuthInterceptor) Authorize(ctx context.Context, method string
 	if len(values) == 0 {
 		return status.Errorf(codes.Unauthenticated, "authorization key is not provided")
 	}
-	log.Println("*******************************")
+	log.Println(">>>>>>>>>>>>>>>this is tokens: ", values)
 	// Check the access token valid
 	accessToken := values[0]
 	claims, err := interceptor.jwtManager.Verify(accessToken)
@@ -82,6 +82,7 @@ func (interceptor *AuthInterceptor) Authorize(ctx context.Context, method string
 		return status.Errorf(codes.Unauthenticated, "access token is invalid")
 	}
 
+	// verify role permission
 	for _, role := range accessibleRoles {
 		log.Printf("path: %v ------ user: %v", role, claims.Role)
 		if role == claims.Role {

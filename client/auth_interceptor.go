@@ -90,7 +90,6 @@ func (interceptor *AuthInterceptor) scheduleRefreshToken(duration time.Duration)
 			}
 		}
 	}()
-
 	return nil
 }
 
