@@ -29,7 +29,7 @@ func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (interface{}, error) {
 
-		log.Println(">---------------->Unary Interceptor: ", info.FullMethod)
+		log.Println("Unary Interceptor: ", info.FullMethod)
 
 		err := interceptor.Authorize(ctx, info.FullMethod)
 		if err != nil {
@@ -47,7 +47,7 @@ func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler) error {
 
-		log.Println(">----------------stream Interceptor: ", info.FullMethod)
+		log.Println("stream Interceptor: ", info.FullMethod)
 
 		err := interceptor.Authorize(ss.Context(), info.FullMethod)
 		if err != nil {
@@ -74,7 +74,7 @@ func (interceptor *AuthInterceptor) Authorize(ctx context.Context, method string
 	if len(values) == 0 {
 		return status.Errorf(codes.Unauthenticated, "authorization key is not provided")
 	}
-	log.Println(">>>>>>>>>>>>>>>this is tokens: ", values)
+	log.Println("this is tokens: ", values)
 	// Check the access token valid
 	accessToken := values[0]
 	claims, err := interceptor.jwtManager.Verify(accessToken)
@@ -84,7 +84,7 @@ func (interceptor *AuthInterceptor) Authorize(ctx context.Context, method string
 
 	// verify role permission
 	for _, role := range accessibleRoles {
-		log.Printf("path: %v ------ user: %v", role, claims.Role)
+		// log.Printf("path: %v ------ user: %v", role, claims.Role)
 		if role == claims.Role {
 			return nil
 		}
