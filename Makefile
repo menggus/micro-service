@@ -1,5 +1,5 @@
 gen:
-	protoc --go_out=. --go-grpc_out=. proto/*.proto
+	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. proto/*.proto
 
 clean:
 	rm pb/*.go
@@ -15,6 +15,9 @@ server-tls1:
 
 server-tls2:
 	go run cmd/server/main.go -port 50052 -tls
+
+rest:
+	go run cmd/server/main.go -port 8081 -type rest
 
 server:
 	go run cmd/server/main.go -port 8080
